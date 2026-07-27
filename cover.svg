@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Preflight Guard cover">
+  <rect width="1200" height="630" fill="#0f1117"/>
+  <circle cx="1020" cy="120" r="220" fill="#312e81" opacity=".55"/>
+  <circle cx="170" cy="560" r="250" fill="#064e3b" opacity=".45"/>
+  <text x="90" y="210" fill="#f9fafb" font-family="Inter, Arial, sans-serif" font-size="76" font-weight="700">Preflight Guard</text>
+  <text x="94" y="292" fill="#cbd5e1" font-family="Inter, Arial, sans-serif" font-size="34">Local-only request safety for Insomnia</text>
+  <g transform="translate(90 360)">
+    <rect width="760" height="96" rx="18" fill="#161b22" stroke="#334155"/>
+    <text x="34" y="60" fill="#10b981" font-family="Menlo, Consolas, monospace" font-size="28">DELETE https://api.production.com/users/42</text>
+    <text x="34" y="132" fill="#f87171" font-family="Menlo, Consolas, monospace" font-size="26">⚠ destructive request to production-like host</text>
+  </g>
+</svg>

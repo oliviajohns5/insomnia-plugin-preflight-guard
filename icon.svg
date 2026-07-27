@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Preflight Guard icon">
+  <rect width="128" height="128" rx="28" fill="#171923"/>
+  <path d="M64 16l38 14v28c0 25-15 45-38 54-23-9-38-29-38-54V30l38-14z" fill="#7c3aed"/>
+  <path d="M64 28l26 10v21c0 18-10 32-26 39-16-7-26-21-26-39V38l26-10z" fill="#111827"/>
+  <path d="M51 64l9 9 20-24" fill="none" stroke="#10b981" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

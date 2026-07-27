@@ -1,0 +1,50 @@
+{
+  "name": "insomnia-plugin-preflight-guard",
+  "version": "1.0.0",
+  "description": "Local-only preflight safety checks for Insomnia requests: secret leaks, production mutations, unsafe auth placement, and redacted workspace audits.",
+  "main": "main.js",
+  "license": "MIT",
+  "author": "oliviajohns5",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oliviajohns5/insomnia-plugin-preflight-guard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/oliviajohns5/insomnia-plugin-preflight-guard/issues"
+  },
+  "homepage": "https://github.com/oliviajohns5/insomnia-plugin-preflight-guard#readme",
+  "keywords": [
+    "insomnia",
+    "insomnia-plugin",
+    "api-security",
+    "secret-scanning",
+    "request-guard",
+    "preflight",
+    "redaction"
+  ],
+  "files": [
+    "main.js",
+    "README.md",
+    "LICENSE",
+    "icon.svg",
+    "cover.svg"
+  ],
+  "scripts": {
+    "test": "node test.js",
+    "pack:dry": "npm pack --dry-run"
+  },
+  "insomnia": {
+    "name": "preflight-guard",
+    "displayName": "Preflight Guard",
+    "description": "Warns before risky API requests leave your machine: leaked secrets, production mutations, query-string auth, and unsafe headers.",
+    "images": {
+      "icon": "icon.svg",
+      "cover": "cover.svg"
+    },
+    "publisher": {
+      "name": "oliviajohns5"
+    },
+    "unlisted": false
+  },
+  "devDependencies": {}
+}

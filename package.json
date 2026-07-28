@@ -31,6 +31,7 @@
   ],
   "scripts": {
     "test": "node test.js",
+    "test:packaged": "node qa-packaged.js",
     "pack:dry": "npm pack --dry-run"
   },
   "insomnia": {

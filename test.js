@@ -112,6 +112,10 @@ async function run() {
   assert(md.includes('# Insomnia Preflight Guard Audit'), 'audit has title');
   assert(md.includes('| Severity | Type | Location | Preview |'), 'audit has table');
 
+  // fallback path must not use read-only filesystem root when save dialog is unavailable
+  const fallbackPath = t.getWritableAuditPath({ app: { getPath: key => key === 'documents' ? '/tmp/preflight-docs' : '' } }, 'audit.md');
+  assert.strictEqual(fallbackPath, path.join('/tmp/preflight-docs', 'audit.md'), 'fallback uses writable app path');
+
   // workspace action writes file fallback
   const cwd = process.cwd();
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'preflight-guard-'));
@@ -130,6 +134,14 @@ async function run() {
       assert(fs.existsSync(out), `${name} writes audit`);
       assert(fs.readFileSync(out, 'utf8').includes('Generated:'), `${name} audit file has generated stamp`);
     }
+
+    const fallbackDir = path.join(tmp, 'documents');
+    fs.mkdirSync(fallbackDir);
+    await plugin.requestActions[0].action({
+      data: { export: { insomnia: async () => workspace } },
+      app: { alert: async () => {}, showSaveDialog: async () => null, getPath: key => key === 'documents' ? fallbackDir : '' },
+    });
+    assert(fs.existsSync(path.join(fallbackDir, 'insomnia-preflight-audit.md')), 'null save dialog writes to documents fallback');
   } finally {
     process.chdir(cwd);
     fs.rmSync(tmp, { recursive: true, force: true });

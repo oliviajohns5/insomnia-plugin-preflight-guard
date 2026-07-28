@@ -130,6 +130,13 @@ async function main() {
     assert(audit.includes('query-auth'), `${name} audit query auth`);
     assert(!audit.includes('abcdefghijklmnopqrstuvwxyz1234567890'), `${name} audit redacts secret`);
   }
+
+  const fallbackDir = path.join(tmp, 'documents');
+  fs.mkdirSync(fallbackDir);
+  const fallbackCtx = makeContext({ outputPath: null });
+  fallbackCtx.app.getPath = key => key === 'documents' ? fallbackDir : '';
+  await plugin.requestActions[0].action(fallbackCtx, { workspace: {}, requestGroup: [], requests: [] });
+  assert(fs.existsSync(path.join(fallbackDir, 'insomnia-preflight-audit.md')), 'null save dialog writes to writable documents fallback');
   fs.rmSync(tmp, { recursive: true, force: true });
 
   const preview = await plugin.templateTags[0].run({}, 'api_key=' + fakeOpenAi);

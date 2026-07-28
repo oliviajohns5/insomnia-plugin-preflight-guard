@@ -269,13 +269,13 @@ function makeAuditMarkdown(findings) {
   return `# Insomnia Preflight Guard Audit\n\nGenerated: ${now}\n\nLocal-only report. Secrets are redacted.\n\n## Summary\n\n- High: ${counts.high || 0}\n- Medium: ${counts.medium || 0}\n- Low: ${counts.low || 0}\n\n## Findings\n\n| Severity | Type | Location | Preview |\n|---|---|---|---|\n${rows || '| low | none | workspace | No risky patterns detected. |'}\n`;
 }
 
-function getWritableAuditPath(context, fileName) {
+async function getWritableAuditPath(context, fileName) {
   const path = require('path');
   const candidates = [];
   if (context.app && typeof context.app.getPath === 'function') {
     for (const key of ['documents', 'desktop', 'downloads', 'userData', 'home']) {
       try {
-        const value = context.app.getPath(key);
+        const value = await context.app.getPath(key);
         if (value) candidates.push(value);
       } catch {
         // Ignore unsupported Electron path keys in older/newer Insomnia versions.
@@ -302,7 +302,7 @@ const exportRedactedAuditAction = {
     if (context.app && typeof context.app.showSaveDialog === 'function') {
       output = await context.app.showSaveDialog({ defaultPath: 'insomnia-preflight-audit.md' });
     }
-    if (!output) output = getWritableAuditPath(context, 'insomnia-preflight-audit.md');
+    if (!output) output = await getWritableAuditPath(context, 'insomnia-preflight-audit.md');
     fs.writeFileSync(output, report, 'utf8');
     if (context.app && typeof context.app.alert === 'function') {
       await context.app.alert('Preflight Guard audit exported', output);

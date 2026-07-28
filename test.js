@@ -113,7 +113,7 @@ async function run() {
   assert(md.includes('| Severity | Type | Location | Preview |'), 'audit has table');
 
   // fallback path must not use read-only filesystem root when save dialog is unavailable
-  const fallbackPath = t.getWritableAuditPath({ app: { getPath: key => key === 'documents' ? '/tmp/preflight-docs' : '' } }, 'audit.md');
+  const fallbackPath = await t.getWritableAuditPath({ app: { getPath: async key => key === 'documents' ? '/tmp/preflight-docs' : '' } }, 'audit.md');
   assert.strictEqual(fallbackPath, path.join('/tmp/preflight-docs', 'audit.md'), 'fallback uses writable app path');
 
   // workspace action writes file fallback

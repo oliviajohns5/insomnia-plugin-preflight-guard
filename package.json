@@ -1,6 +1,6 @@
 {
   "name": "insomnia-plugin-preflight-guard",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Local-only preflight safety checks for Insomnia requests: secret leaks, production mutations, unsafe auth placement, and redacted workspace audits.",
   "main": "main.js",
   "license": "MIT",

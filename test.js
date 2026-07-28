@@ -35,7 +35,12 @@ async function run() {
   // exports
   assert(Array.isArray(plugin.requestHooks), 'requestHooks must be array');
   assert(Array.isArray(plugin.workspaceActions), 'workspaceActions must be array');
+  assert(Array.isArray(plugin.requestGroupActions), 'requestGroupActions must be array');
+  assert(Array.isArray(plugin.requestActions), 'requestActions must be array');
   assert(Array.isArray(plugin.templateTags), 'templateTags must be array');
+  assert.strictEqual(plugin.workspaceActions[0].label, 'Preflight Guard: Export Redacted Audit');
+  assert.strictEqual(plugin.requestGroupActions[0].label, 'Preflight Guard: Export Redacted Audit');
+  assert.strictEqual(plugin.requestActions[0].label, 'Preflight Guard: Export Redacted Audit');
 
   // no finding on harmless request
   let findings = t.analyzeRequest({ method: 'GET', url: 'https://api.example.com/users', headers: [], bodyText: '' });
@@ -112,13 +117,19 @@ async function run() {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'preflight-guard-'));
   process.chdir(tmp);
   try {
-    await plugin.workspaceActions[0].action({
-      data: { export: { insomnia: async () => workspace } },
-      app: { alert: async () => {}, showSaveDialog: async () => null },
-    });
-    const out = path.join(tmp, 'insomnia-preflight-audit.md');
-    assert(fs.existsSync(out), 'workspace action writes audit');
-    assert(fs.readFileSync(out, 'utf8').includes('Generated:'), 'audit file has generated stamp');
+    for (const [name, action] of [
+      ['workspaceActions', plugin.workspaceActions[0]],
+      ['requestGroupActions', plugin.requestGroupActions[0]],
+      ['requestActions', plugin.requestActions[0]],
+    ]) {
+      const out = path.join(tmp, `${name}.md`);
+      await action.action({
+        data: { export: { insomnia: async () => workspace } },
+        app: { alert: async () => {}, showSaveDialog: async () => out },
+      });
+      assert(fs.existsSync(out), `${name} writes audit`);
+      assert(fs.readFileSync(out, 'utf8').includes('Generated:'), `${name} audit file has generated stamp`);
+    }
   } finally {
     process.chdir(cwd);
     fs.rmSync(tmp, { recursive: true, force: true });

@@ -87,7 +87,12 @@ function makeContext({ method = 'GET', url = 'https://api.example.com/ping', hea
 async function main() {
   assert(Array.isArray(plugin.requestHooks), 'requestHooks exported');
   assert(Array.isArray(plugin.workspaceActions), 'workspaceActions exported');
+  assert(Array.isArray(plugin.requestGroupActions), 'requestGroupActions exported');
+  assert(Array.isArray(plugin.requestActions), 'requestActions exported');
   assert(Array.isArray(plugin.templateTags), 'templateTags exported');
+  assert.strictEqual(plugin.workspaceActions[0].label, 'Preflight Guard: Export Redacted Audit');
+  assert.strictEqual(plugin.requestGroupActions[0].label, 'Preflight Guard: Export Redacted Audit');
+  assert.strictEqual(plugin.requestActions[0].label, 'Preflight Guard: Export Redacted Audit');
 
   const safe = makeContext();
   await plugin.requestHooks[0](safe);
@@ -112,12 +117,19 @@ async function main() {
 
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'insomnia-packaged-real-'));
   const auditPath = path.join(tmp, 'audit.md');
-  const auditCtx = makeContext({ outputPath: auditPath });
-  await plugin.workspaceActions[0].action(auditCtx, { workspace: {}, requestGroup: [], requests: [] });
-  const audit = fs.readFileSync(auditPath, 'utf8');
-  assert(audit.includes('# Insomnia Preflight Guard Audit'), 'audit title');
-  assert(audit.includes('query-auth'), 'audit query auth');
-  assert(!audit.includes('abcdefghijklmnopqrstuvwxyz1234567890'), 'audit redacts secret');
+  for (const [name, action] of [
+    ['workspaceActions', plugin.workspaceActions[0]],
+    ['requestGroupActions', plugin.requestGroupActions[0]],
+    ['requestActions', plugin.requestActions[0]],
+  ]) {
+    const aliasAuditPath = path.join(tmp, `${name}.md`);
+    const auditCtx = makeContext({ outputPath: aliasAuditPath });
+    await action.action(auditCtx, { workspace: {}, requestGroup: [], requests: [] });
+    const audit = fs.readFileSync(aliasAuditPath, 'utf8');
+    assert(audit.includes('# Insomnia Preflight Guard Audit'), `${name} audit title`);
+    assert(audit.includes('query-auth'), `${name} audit query auth`);
+    assert(!audit.includes('abcdefghijklmnopqrstuvwxyz1234567890'), `${name} audit redacts secret`);
+  }
   fs.rmSync(tmp, { recursive: true, force: true });
 
   const preview = await plugin.templateTags[0].run({}, 'api_key=' + fakeOpenAi);

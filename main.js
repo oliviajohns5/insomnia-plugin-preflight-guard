@@ -271,7 +271,7 @@ function makeAuditMarkdown(findings) {
 
 module.exports.requestHooks = [guardRequest];
 
-module.exports.workspaceActions = [{
+const exportRedactedAuditAction = {
   label: 'Preflight Guard: Export Redacted Audit',
   icon: 'fa-shield',
   action: async (context) => {
@@ -290,7 +290,11 @@ module.exports.workspaceActions = [{
       await context.app.alert('Preflight Guard audit exported', output);
     }
   }
-}];
+};
+
+module.exports.workspaceActions = [exportRedactedAuditAction];
+module.exports.requestGroupActions = [exportRedactedAuditAction];
+module.exports.requestActions = [exportRedactedAuditAction];
 
 module.exports.templateTags = [{
   name: 'redactedPreview',

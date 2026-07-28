@@ -193,7 +193,23 @@ function redactText(text) {
 
 function formatFindings(findings) {
   if (!findings.length) return 'No risky request patterns detected.';
-  return findings.map((f, index) => `${index + 1}. [${f.severity.toUpperCase()}] ${f.rule} at ${f.location}: ${f.preview}`).join('\n');
+  return findings.map((f) => `• [${f.severity.toUpperCase()}] ${f.rule}\n  Location: ${f.location}\n  Preview: ${f.preview}`).join('\n\n');
+}
+
+function formatAlertMessage(request, findings) {
+  return [
+    'Request:',
+    `${String(request.method || 'GET').toUpperCase()} ${request.url}`,
+    '',
+    'Findings:',
+    formatFindings(findings),
+    '',
+    'Local-only: no request data was sent anywhere by this plugin.',
+  ].join('\n');
+}
+
+function formatErrorMessage(findings) {
+  return `Preflight Guard blocked request:\n\n${formatFindings(findings)}`;
 }
 
 function riskLevel(findings) {
@@ -219,14 +235,14 @@ async function guardRequest(context) {
   if (level === 'low') return;
 
   const title = level === 'high' ? 'Preflight Guard blocked a risky request' : 'Preflight Guard warning';
-  const message = `${request.method} ${request.url}\n\n${formatFindings(findings)}\n\nLocal-only: no request data was sent anywhere by this plugin.`;
+  const message = formatAlertMessage(request, findings);
 
   if (context.app && typeof context.app.alert === 'function') {
     await context.app.alert(title, message);
   }
 
   if (level === 'high' && cfg.blockOnHighRisk) {
-    throw new Error(`Preflight Guard blocked request:\n${formatFindings(findings)}`);
+    throw new Error(formatErrorMessage(findings));
   }
 }
 
@@ -332,6 +348,8 @@ module.exports.__test = {
   collectRequest,
   findSecretsInText,
   findAuthInQuery,
+  formatAlertMessage,
+  formatErrorMessage,
   formatFindings,
   guardRequest,
   getWritableAuditPath,

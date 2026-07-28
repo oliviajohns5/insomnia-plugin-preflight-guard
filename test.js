@@ -112,6 +112,12 @@ async function run() {
   assert(md.includes('# Insomnia Preflight Guard Audit'), 'audit has title');
   assert(md.includes('| Severity | Type | Location | Preview |'), 'audit has table');
 
+  const formatted = t.formatFindings([{ severity: 'medium', rule: 'Sensitive header present', location: 'header.Authorization', preview: 'Authorization: Bear…alue' }]);
+  assert(formatted.includes('• [MEDIUM] Sensitive header present'), 'formatted finding has bullet severity line');
+  assert(formatted.includes('Location: header.Authorization'), 'formatted finding has location line');
+  const alertMessage = t.formatAlertMessage({ method: 'GET', url: 'https://httpbin.org/get' }, [{ severity: 'medium', rule: 'Sensitive header present', location: 'header.Authorization', preview: 'Authorization: Bear…alue' }]);
+  assert(alertMessage.startsWith('Request:\nGET https://httpbin.org/get\n\nFindings:'), 'alert separates request and findings');
+
   // fallback path must not use read-only filesystem root when save dialog is unavailable
   const fallbackPath = await t.getWritableAuditPath({ app: { getPath: async key => key === 'documents' ? '/tmp/preflight-docs' : '' } }, 'audit.md');
   assert.strictEqual(fallbackPath, path.join('/tmp/preflight-docs', 'audit.md'), 'fallback uses writable app path');

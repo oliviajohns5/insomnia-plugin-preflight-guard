@@ -1,5 +1,9 @@
 # insomnia-plugin-preflight-guard
 
+[![npm version](https://img.shields.io/npm/v/insomnia-plugin-preflight-guard.svg)](https://www.npmjs.com/package/insomnia-plugin-preflight-guard)
+[![npm downloads](https://img.shields.io/npm/dm/insomnia-plugin-preflight-guard.svg)](https://www.npmjs.com/package/insomnia-plugin-preflight-guard)
+[![license: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 Local-only preflight safety checks for Insomnia requests.
 
 Preflight Guard warns before risky API requests leave your machine: leaked secrets, production mutations, query-string auth, sensitive headers, and redacted workspace audits.
@@ -22,6 +26,28 @@ It is designed for developers who work with real API keys, production endpoints,
 - No telemetry
 - No backend
 - No dependencies
+
+## Demo
+
+Safe request passes normally:
+
+![Safe request passes](docs/assets/safe-request.jpg)
+
+Production-like destructive request is blocked before sending:
+
+![Production DELETE blocked](docs/assets/blocked-prod-delete.jpg)
+
+Sensitive headers warn with redacted values:
+
+![Sensitive header warning](docs/assets/sensitive-header-warning.jpg)
+
+The redacted audit action appears in the New Request dropdown:
+
+![Audit action menu](docs/assets/audit-action-menu.jpg)
+
+Audit export writes a local Markdown file:
+
+![Audit exported](docs/assets/audit-exported.jpg)
 
 ## What it catches
 
@@ -83,12 +109,16 @@ Send requests normally. Before a risky request is sent, Preflight Guard analyzes
 
 High-risk findings show an alert and block the request by default.
 
-Example blocked request:
+Example blocked request alert:
 
 ```text
+Request:
 DELETE https://api.production.example.com/users/42
 
-[HIGH] Destructive request to production-like host at method+host: DELETE api.production.example.com/users/42
+Findings:
+• [HIGH] Destructive request to production-like host
+  Location: method+host
+  Preview: DELETE api.production.example.com/users/42
 ```
 
 Example secret finding:
@@ -135,6 +165,23 @@ The default config is local and conservative:
 
 Future versions may expose a UI for editing config. The MVP uses the safe defaults above.
 
+### Config behavior
+
+- `blockOnHighRisk: true` blocks high-risk requests after showing an alert.
+- `blockOnHighRisk: false` shows the alert but allows the request to continue.
+- `warnOnMediumRisk: true` shows warnings for sensitive-but-not-blocking findings.
+- `allowedHosts` prevents production-host matching for known safe domains.
+- `prodHostPatterns` controls host matching for words like `prod`, `production`, and `live`.
+
+Example internal config value:
+
+```json
+{
+  "blockOnHighRisk": false,
+  "allowedHosts": ["prod-sandbox.example.com"]
+}
+```
+
 ## Privacy
 
 Preflight Guard is local-only.
@@ -152,8 +199,37 @@ Preflight Guard is local-only.
 git clone https://github.com/oliviajohns5/insomnia-plugin-preflight-guard.git
 cd insomnia-plugin-preflight-guard
 npm test
+npm run test:packaged
 npm pack --dry-run
 ```
+
+## Verified QA
+
+Verified before release:
+
+- `node --check main.js`
+- `node --check test.js`
+- `node --check real-insomnia-packaged-test.js`
+- `node --check qa-packaged.js`
+- `npm test`
+- `npm run test:packaged`
+- `npm pack --dry-run`
+- real Insomnia Desktop on macOS manual test:
+  - safe request passes
+  - production `DELETE` blocks
+  - query-string secret blocks
+  - sensitive header warns
+  - redacted audit export writes a Markdown file
+
+## Plugin Hub
+
+The npm package is public and eligible for Insomnia Plugin Hub indexing:
+
+- npm: https://www.npmjs.com/package/insomnia-plugin-preflight-guard
+- GitHub: https://github.com/oliviajohns5/insomnia-plugin-preflight-guard
+- Plugin Hub: https://insomnia.rest/plugins
+
+Insomnia Plugin Hub indexing is automatic and may take hours or days after npm publish.
 
 ## Publish
 

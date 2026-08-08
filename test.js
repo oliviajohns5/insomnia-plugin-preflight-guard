@@ -89,6 +89,21 @@ async function run() {
   await t.guardRequest(warnOnly);
   assert.strictEqual(warnOnly.alerts.length, 1, 'warn-only high request should alert');
 
+  // local settings file can allowlist a production-like host
+  const cfgDir = fs.mkdtempSync(path.join(os.tmpdir(), 'preflight-config-'));
+  const cfgPath = path.join(cfgDir, '.insomnia-preflight-guard.json');
+  fs.writeFileSync(cfgPath, JSON.stringify({ allowedHosts: ['prod.example.com'] }), 'utf8');
+  const fileAllowed = mockContext({ method: 'DELETE', url: 'https://prod.example.com/users/1' });
+  fileAllowed.__configPath = cfgPath;
+  await t.guardRequest(fileAllowed);
+  assert.strictEqual(fileAllowed.alerts.length, 0, 'local config allowedHosts should suppress prod mutation');
+
+  // stored config overrides local settings for per-workspace tweaks
+  const storeOverride = mockContext({ method: 'DELETE', url: 'https://prod.example.com/users/1', storeConfig: { allowedHosts: [] } });
+  storeOverride.__configPath = cfgPath;
+  await assert.rejects(() => t.guardRequest(storeOverride), /Preflight Guard blocked request/);
+  fs.rmSync(cfgDir, { recursive: true, force: true });
+
   // redaction
   const redacted = t.redactText('Authorization: Bearer eyJabc.def.ghi\napi_key=' + fakeOpenAiKey);
   assert(!redacted.includes('abcdefghijklmnopqrstuvwxyz123456'), 'redact secret body');

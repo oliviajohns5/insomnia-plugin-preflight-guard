@@ -1,7 +1,7 @@
 {
   "name": "insomnia-plugin-preflight-guard",
-  "version": "1.0.4",
-  "description": "Local-only preflight safety checks for Insomnia requests: secret leaks, production mutations, unsafe auth placement, and redacted workspace audits.",
+  "version": "1.1.0",
+  "description": "Local-only configurable preflight safety checks for Insomnia requests: secret leaks, production mutations, unsafe auth placement, and redacted workspace audits.",
   "main": "main.js",
   "license": "MIT",
   "author": "oliviajohns5",
@@ -32,6 +32,7 @@
   ],
   "scripts": {
     "test": "node test.js",
+    "test:hard": "node hard-qa.js",
     "test:packaged": "node qa-packaged.js",
     "pack:dry": "npm pack --dry-run"
   },

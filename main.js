@@ -1,5 +1,9 @@
 'use strict';
 
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
 const DEFAULT_CONFIG = {
   blockOnHighRisk: true,
   warnOnMediumRisk: true,
@@ -218,12 +222,32 @@ function riskLevel(findings) {
   return 'low';
 }
 
+function localConfigPath(context) {
+  if (context && typeof context.__configPath === 'string' && context.__configPath) return context.__configPath;
+  if (process.env.INSOMNIA_PREFLIGHT_GUARD_CONFIG) return process.env.INSOMNIA_PREFLIGHT_GUARD_CONFIG;
+  return path.join(os.homedir(), '.insomnia-preflight-guard.json');
+}
+
+function loadLocalConfig(context) {
+  const file = localConfigPath(context);
+  try {
+    if (!file || !fs.existsSync(file)) return {};
+    const raw = fs.readFileSync(file, 'utf8');
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 async function getStoredConfig(context) {
+  const fileConfig = loadLocalConfig(context);
   try {
     const raw = context.store && await context.store.getItem('config');
-    return normalizeConfig(raw ? JSON.parse(raw) : {});
+    const storeConfig = raw ? JSON.parse(raw) : {};
+    return normalizeConfig(Object.assign({}, fileConfig, storeConfig));
   } catch {
-    return normalizeConfig({});
+    return normalizeConfig(fileConfig);
   }
 }
 
@@ -352,8 +376,11 @@ module.exports.__test = {
   formatErrorMessage,
   formatFindings,
   guardRequest,
+  getStoredConfig,
   getWritableAuditPath,
   isProductionLikeHost,
+  loadLocalConfig,
+  localConfigPath,
   makeAuditMarkdown,
   normalizeConfig,
   redact,

@@ -4,7 +4,7 @@
 [![npm downloads](https://img.shields.io/npm/dm/insomnia-plugin-preflight-guard.svg)](https://www.npmjs.com/package/insomnia-plugin-preflight-guard)
 [![license: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Local-only preflight safety checks for Insomnia requests.
+Local-only configurable preflight safety checks for Insomnia requests. v1.1.0 adds a local settings file for team-specific guard rules.
 
 Preflight Guard warns before risky API requests leave your machine: leaked secrets, production mutations, query-string auth, sensitive headers, and redacted workspace audits.
 
@@ -19,6 +19,8 @@ It is designed for developers who work with real API keys, production endpoints,
 - Detects common secret leaks in URL, headers, and body
 - Warns on auth-like query parameters such as `access_token`, `api_key`, `client_secret`, `token`
 - Blocks destructive requests to production-like hosts by default
+- Loads local settings from `~/.insomnia-preflight-guard.json`
+- Supports configurable production host patterns, blocked methods, risky POST paths, and host allowlists
 - Flags sensitive headers with redacted previews
 - Adds a workspace action to export a redacted local Markdown audit
 - Adds a `Redacted Preview` template tag
@@ -150,7 +152,32 @@ Use the `Redacted Preview` template tag to redact common secret patterns from pa
 
 ## Configuration
 
-The default config is local and conservative:
+v1.1.0 loads optional local settings from:
+
+```text
+~/.insomnia-preflight-guard.json
+```
+
+For tests, automation, or alternate profiles, set:
+
+```text
+INSOMNIA_PREFLIGHT_GUARD_CONFIG=/absolute/path/to/config.json
+```
+
+Example local config:
+
+```json
+{
+  "blockOnHighRisk": true,
+  "warnOnMediumRisk": true,
+  "prodHostPatterns": ["prod", "production", "live", "customer"],
+  "destructiveMethods": ["DELETE", "PATCH", "PUT"],
+  "riskyPostPathPatterns": ["/delete", "/destroy", "/remove", "/purge", "/admin"],
+  "allowedHosts": ["prod-sandbox.example.com"]
+}
+```
+
+The default config remains local and conservative:
 
 ```json
 {
@@ -163,7 +190,7 @@ The default config is local and conservative:
 }
 ```
 
-Future versions may expose a UI for editing config. The MVP uses the safe defaults above.
+File config is merged first; existing Insomnia `context.store` config, when present, overrides the file for workspace-specific tweaks.
 
 ### Config behavior
 

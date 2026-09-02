@@ -59,6 +59,10 @@ async function run() {
   findings = t.analyzeRequest({ method: 'GET', url: 'https://api.example.com', headers: [{ name: 'Authorization', value: 'Bearer abcdefghijklmnop' }], bodyText: '' });
   assert(findings.some(f => f.type === 'sensitive-header'), 'detect sensitive header');
 
+  // unresolved template tags are risky because they may be sent literally
+  findings = t.analyzeRequest({ method: 'GET', url: 'https://api.example.com/{{ base_path }}/users', headers: [{ name: 'X-Tenant', value: '{{ tenant_id }}' }], bodyText: '{"token":"{{ api_token }}"}' });
+  assert.strictEqual(findings.filter(f => f.type === 'unresolved-template').length, 3, 'detect unresolved URL/header/body templates');
+
   // destructive prod host high
   findings = t.analyzeRequest({ method: 'DELETE', url: 'https://api.production.example.com/users/42', headers: [], bodyText: '' });
   assert(findings.some(f => f.type === 'prod-mutation'), 'detect prod mutation');

@@ -281,3 +281,9 @@ npm publish --access public
 ## License
 
 MIT
+
+## Changelog
+
+### 1.1.1
+
+- Adds unresolved template-tag detection in URLs, headers, bodies, and workspace audits.

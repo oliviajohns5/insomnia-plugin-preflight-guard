@@ -140,18 +140,37 @@ function findAuthInQuery(urlObj) {
   return findings;
 }
 
+function findUnresolvedTemplates(text, location) {
+  const input = safeString(text);
+  const findings = [];
+  const re = /{{\s*[^}]+\s*}}/g;
+  let match;
+  while ((match = re.exec(input)) && findings.length < 10) {
+    findings.push({
+      severity: 'medium',
+      type: 'unresolved-template',
+      rule: 'Unresolved template tag may be sent literally',
+      location,
+      preview: match[0].slice(0, 120),
+    });
+  }
+  return findings;
+}
+
 function analyzeRequest(request, config) {
   const cfg = normalizeConfig(config);
   const urlObj = parseUrl(request.url);
   const findings = [];
 
   findings.push(...findSecretsInText(request.url, 'url'));
+  findings.push(...findUnresolvedTemplates(request.url, 'url'));
   findings.push(...findAuthInQuery(urlObj));
 
   for (const header of request.headers || []) {
     const name = safeString(header.name);
     const value = safeString(header.value);
     findings.push(...findSecretsInText(`${name}: ${value}`, `header.${name || 'unknown'}`));
+    findings.push(...findUnresolvedTemplates(value, `header.${name || 'unknown'}`));
     if (/authorization|api[-_]?key|token|secret/i.test(name) && value && value.length > 10) {
       findings.push({
         severity: 'medium',
@@ -164,6 +183,7 @@ function analyzeRequest(request, config) {
   }
 
   findings.push(...findSecretsInText(request.bodyText, 'body'));
+  findings.push(...findUnresolvedTemplates(request.bodyText, 'body'));
 
   if (urlObj && isProductionLikeHost(urlObj.hostname, cfg) && isDestructive(request.method, urlObj, cfg)) {
     findings.push({
@@ -288,6 +308,7 @@ function analyzeWorkspaceExport(raw) {
       const urlObj = parseUrl(value.url);
       if (urlObj && isProductionLikeHost(urlObj.hostname, normalizeConfig({}))) prodUrls.push(value.url);
       if (urlObj && findAuthInQuery(urlObj).length) authQueryUrls.push(value.url);
+      findings.push(...findUnresolvedTemplates(value.url, 'workspace.url'));
     }
     if (typeof value.name === 'string') duplicateNames.set(value.name, (duplicateNames.get(value.name) || 0) + 1);
     Object.keys(value).forEach(k => walk(value[k]));
@@ -372,6 +393,7 @@ module.exports.__test = {
   collectRequest,
   findSecretsInText,
   findAuthInQuery,
+  findUnresolvedTemplates,
   formatAlertMessage,
   formatErrorMessage,
   formatFindings,

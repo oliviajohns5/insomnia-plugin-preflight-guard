@@ -67,6 +67,14 @@ async function run() {
   findings = t.analyzeRequest({ method: 'DELETE', url: 'https://api.production.example.com/users/42', headers: [], bodyText: '' });
   assert(findings.some(f => f.type === 'prod-mutation'), 'detect prod mutation');
 
+  // production host matching is label-boundary aware
+  findings = t.analyzeRequest({ method: 'DELETE', url: 'https://product.example.com/users/42', headers: [], bodyText: '' });
+  assert(!findings.some(f => f.type === 'prod-mutation'), 'product host should not match prod');
+  findings = t.analyzeRequest({ method: 'DELETE', url: 'https://livereload.example.com/users/42', headers: [], bodyText: '' });
+  assert(!findings.some(f => f.type === 'prod-mutation'), 'livereload host should not match live');
+  findings = t.analyzeRequest({ method: 'DELETE', url: 'https://api-prod.example.com/users/42', headers: [], bodyText: '' });
+  assert(findings.some(f => f.type === 'prod-mutation'), 'hyphen-delimited prod host still matches');
+
   // risky POST path
   findings = t.analyzeRequest({ method: 'POST', url: 'https://live.example.com/admin/delete-user', headers: [], bodyText: '' });
   assert(findings.some(f => f.type === 'prod-mutation'), 'detect risky POST path to prod');
@@ -77,6 +85,16 @@ async function run() {
     { allowedHosts: ['api.production.example.com'] }
   );
   assert(!findings.some(f => f.type === 'prod-mutation'), 'allowed host should not trigger prod mutation');
+
+  // structured request bodies are scanned when small
+  const structuredBody = t.extractBodyText({ mimeType: 'multipart/form-data', params: [{ name: 'api_key', value: fakeGithubToken }] });
+  assert(structuredBody.includes('api_key'), 'structured body params are serialized');
+  findings = t.analyzeRequest({ method: 'POST', url: 'https://api.example.com/users', headers: [], bodyText: structuredBody });
+  assert(findings.some(f => f.type === 'secret' && f.rule === 'GitHub token'), 'detect secret in structured body params');
+
+  // large structured request bodies are skipped to avoid heavy scans
+  const largeStructuredBody = t.extractBodyText({ params: [{ name: 'blob', value: 'x'.repeat(40000) }] });
+  assert.strictEqual(largeStructuredBody, '', 'large structured bodies are skipped');
 
   // request hook blocks high risk
   const blocked = mockContext({ method: 'DELETE', url: 'https://prod.example.com/users/1' });
@@ -122,6 +140,10 @@ async function run() {
     ]
   });
   findings = t.analyzeWorkspaceExport(workspace);
+  assert(findings.some(f => f.type === 'prod-url'), 'workspace detects prod URLs with default config');
+  const allowlistedWorkspaceFindings = t.analyzeWorkspaceExport(workspace, { allowedHosts: ['api.production.example.com'] });
+  assert(!allowlistedWorkspaceFindings.some(f => f.type === 'prod-url'), 'workspace audit uses merged config allowlist');
+  assert(allowlistedWorkspaceFindings.some(f => f.type === 'query-auth'), 'workspace allowlist does not hide query auth');
   assert(findings.some(f => f.type === 'secret'), 'workspace detects secrets');
   assert(findings.some(f => f.type === 'query-auth'), 'workspace detects query auth');
   assert(findings.some(f => f.type === 'duplicate-name'), 'workspace detects duplicate names');

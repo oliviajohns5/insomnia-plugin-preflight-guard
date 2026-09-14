@@ -102,6 +102,10 @@ async function main() {
   await assert.rejects(() => plugin.requestHooks[0](prodDelete), /Preflight Guard blocked request/);
   assert.strictEqual(prodDelete.alerts.length, 1, 'prod DELETE alerts');
 
+  const productDelete = makeContext({ method: 'DELETE', url: 'https://product.example.com/users/42' });
+  await plugin.requestHooks[0](productDelete);
+  assert.strictEqual(productDelete.alerts.length, 0, 'product host does not false-positive as prod');
+
   const fakeOpenAi = 'sk-' + 'abcdefghijklmnopqrstuvwxyz123456';
   const querySecret = makeContext({ url: 'https://api.example.com/users?api_key=' + fakeOpenAi });
   await assert.rejects(() => plugin.requestHooks[0](querySecret), /Preflight Guard blocked request/);
@@ -128,7 +132,15 @@ async function main() {
     const audit = fs.readFileSync(aliasAuditPath, 'utf8');
     assert(audit.includes('# Insomnia Preflight Guard Audit'), `${name} audit title`);
     assert(audit.includes('query-auth'), `${name} audit query auth`);
+    assert(audit.includes('prod-url'), `${name} audit production URL`);
     assert(!audit.includes('abcdefghijklmnopqrstuvwxyz1234567890'), `${name} audit redacts secret`);
+
+    const allowlistedPath = path.join(tmp, `${name}-allowlisted.md`);
+    const allowlistedCtx = makeContext({ outputPath: allowlistedPath, config: { allowedHosts: ['api.production.example.com'] } });
+    await action.action(allowlistedCtx, { workspace: {}, requestGroup: [], requests: [] });
+    const allowlistedAudit = fs.readFileSync(allowlistedPath, 'utf8');
+    assert(!allowlistedAudit.includes('prod-url'), `${name} audit respects configured allowedHosts`);
+    assert(allowlistedAudit.includes('query-auth'), `${name} audit keeps query auth when host allowlisted`);
   }
 
   const fallbackDir = path.join(tmp, 'documents');

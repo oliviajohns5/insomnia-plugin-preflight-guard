@@ -67,8 +67,9 @@ function isProductionLikeHost(hostname, cfg) {
   const host = String(hostname || '').toLowerCase();
   if (!host || hostAllowed(host, cfg)) return false;
   return cfg.prodHostPatterns.some(pattern => {
-    const p = String(pattern).toLowerCase();
-    return p && (host.includes(p) || new RegExp(`(^|[-.])${escapeRegExp(p)}($|[-.])`).test(host));
+    const p = String(pattern).trim().toLowerCase();
+    if (!p) return false;
+    return new RegExp(`(^|[-.])${escapeRegExp(p)}($|[-.])`).test(host);
   });
 }
 
@@ -86,6 +87,27 @@ function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function extractBodyText(body, maxBytes = 32768) {
+  if (!body || typeof body !== 'object') return safeString(body);
+  const parts = [];
+  if (typeof body.text === 'string') parts.push(body.text);
+
+  const structured = {};
+  for (const [key, value] of Object.entries(body)) {
+    if (key !== 'text' && value != null && value !== '') structured[key] = value;
+  }
+  if (Object.keys(structured).length) {
+    try {
+      const encoded = JSON.stringify(structured);
+      if (Buffer.byteLength(encoded, 'utf8') <= maxBytes) parts.push(encoded);
+    } catch {
+      // Ignore unserializable body metadata rather than blocking a request.
+    }
+  }
+
+  return parts.join('\n');
+}
+
 function collectRequest(context) {
   const req = context.request;
   const body = req.getBody ? req.getBody() : {};
@@ -95,7 +117,7 @@ function collectRequest(context) {
     method: call(req, 'getMethod') || 'GET',
     url: call(req, 'getUrl') || '',
     headers: call(req, 'getHeaders') || [],
-    bodyText: body && typeof body.text === 'string' ? body.text : '',
+    bodyText: extractBodyText(body),
   };
 }
 
@@ -290,7 +312,8 @@ async function guardRequest(context) {
   }
 }
 
-function analyzeWorkspaceExport(raw) {
+function analyzeWorkspaceExport(raw, config) {
+  const cfg = normalizeConfig(config);
   const text = safeString(raw);
   let parsed = null;
   try { parsed = JSON.parse(text); } catch { parsed = null; }
@@ -306,7 +329,7 @@ function analyzeWorkspaceExport(raw) {
     if (Array.isArray(value)) return value.forEach(walk);
     if (typeof value.url === 'string') {
       const urlObj = parseUrl(value.url);
-      if (urlObj && isProductionLikeHost(urlObj.hostname, normalizeConfig({}))) prodUrls.push(value.url);
+      if (urlObj && isProductionLikeHost(urlObj.hostname, cfg)) prodUrls.push(value.url);
       if (urlObj && findAuthInQuery(urlObj).length) authQueryUrls.push(value.url);
       findings.push(...findUnresolvedTemplates(value.url, 'workspace.url'));
     }
@@ -355,7 +378,8 @@ const exportRedactedAuditAction = {
   icon: 'fa-shield',
   action: async (context) => {
     const exported = await context.data.export.insomnia({ includePrivate: false, format: 'json' });
-    const findings = analyzeWorkspaceExport(exported);
+    const cfg = await getStoredConfig(context);
+    const findings = analyzeWorkspaceExport(exported, cfg);
     const report = makeAuditMarkdown(findings);
     const fs = require('fs');
     const path = require('path');
@@ -391,6 +415,7 @@ module.exports.__test = {
   analyzeRequest,
   analyzeWorkspaceExport,
   collectRequest,
+  extractBodyText,
   findSecretsInText,
   findAuthInQuery,
   findUnresolvedTemplates,

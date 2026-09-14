@@ -4,7 +4,7 @@
 [![npm downloads](https://img.shields.io/npm/dm/insomnia-plugin-preflight-guard.svg)](https://www.npmjs.com/package/insomnia-plugin-preflight-guard)
 [![license: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Local-only configurable preflight safety checks for Insomnia requests. v1.1.0 adds a local settings file for team-specific guard rules.
+Local-only configurable preflight safety checks for Insomnia requests. v1.1.2 makes production-host matching boundary-aware and applies merged config to workspace audits.
 
 Preflight Guard warns before risky API requests leave your machine: leaked secrets, production mutations, query-string auth, sensitive headers, and redacted workspace audits.
 
@@ -16,7 +16,7 @@ It is designed for developers who work with real API keys, production endpoints,
 
 ## Features
 
-- Detects common secret leaks in URL, headers, and body
+- Detects common secret leaks in URL, headers, body text, and small structured bodies
 - Warns on auth-like query parameters such as `access_token`, `api_key`, `client_secret`, `token`
 - Blocks destructive requests to production-like hosts by default
 - Loads local settings from `~/.insomnia-preflight-guard.json`
@@ -198,7 +198,7 @@ File config is merged first; existing Insomnia `context.store` config, when pres
 - `blockOnHighRisk: false` shows the alert but allows the request to continue.
 - `warnOnMediumRisk: true` shows warnings for sensitive-but-not-blocking findings.
 - `allowedHosts` prevents production-host matching for known safe domains.
-- `prodHostPatterns` controls host matching for words like `prod`, `production`, and `live`.
+- `prodHostPatterns` controls boundary-aware host labels/segments like `prod`, `production`, and `live`; substrings such as `product` and `livereload` do not match.
 
 Example internal config value:
 
@@ -283,6 +283,12 @@ npm publish --access public
 MIT
 
 ## Changelog
+
+### 1.1.2
+
+- Makes production-host detection boundary-aware to avoid `product`/`livereload` false positives.
+- Applies merged local/store config to redacted workspace audits, including host allowlists.
+- Scans small structured request bodies such as form params for secrets.
 
 ### 1.1.1
 

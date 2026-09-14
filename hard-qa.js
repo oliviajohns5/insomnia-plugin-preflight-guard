@@ -65,6 +65,21 @@ async function run() {
     assert.strictEqual(c.alerts.length, 1);
   });
 
+  await check('production host detection is boundary-aware', () => {
+    assert.strictEqual(t.isProductionLikeHost('api-prod.example.com', t.normalizeConfig({})), true);
+    assert.strictEqual(t.isProductionLikeHost('api.production.example.com', t.normalizeConfig({})), true);
+    assert.strictEqual(t.isProductionLikeHost('product.example.com', t.normalizeConfig({})), false);
+    assert.strictEqual(t.isProductionLikeHost('livereload.example.com', t.normalizeConfig({})), false);
+  });
+
+  await check('small structured body params are scanned without scanning huge metadata', () => {
+    const small = t.extractBodyText({ params: [{ name: 'token', value: fakeGithubToken }] });
+    assert(small.includes('token'));
+    assert(t.analyzeRequest({ method: 'POST', url: 'https://api.example.com', headers: [], bodyText: small }).some(f => f.rule === 'GitHub token'));
+    const huge = t.extractBodyText({ params: [{ name: 'blob', value: 'x'.repeat(40000) }] });
+    assert.strictEqual(huge, '');
+  });
+
   await check('local file config allowlists host', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'preflight-hard-cfg-'));
     try {
@@ -112,12 +127,16 @@ async function run() {
     } finally { fs.rmSync(dir, { recursive: true, force: true }); }
   });
 
-  await check('workspace audit redacts risky content', () => {
+  await check('workspace audit redacts risky content and respects config', () => {
     const workspace = JSON.stringify({ resources: [{ name: 'A', url: 'https://prod.example.com/a?access_token=' + fakeOpenAiKey }, { name: 'A', body: 'secret=' + fakeGithubToken }] });
     const findings = t.analyzeWorkspaceExport(workspace);
+    const allowlisted = t.analyzeWorkspaceExport(workspace, { allowedHosts: ['prod.example.com'] });
     const md = t.makeAuditMarkdown(findings);
     assert(findings.some(f => f.type === 'secret'));
     assert(findings.some(f => f.type === 'query-auth'));
+    assert(findings.some(f => f.type === 'prod-url'));
+    assert(!allowlisted.some(f => f.type === 'prod-url'));
+    assert(allowlisted.some(f => f.type === 'query-auth'));
     assert(findings.some(f => f.type === 'duplicate-name'));
     assert(!md.includes('abcdefghijklmnopqrstuvwxyz123456'));
   });

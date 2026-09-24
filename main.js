@@ -245,7 +245,7 @@ function formatFindings(findings) {
 function formatAlertMessage(request, findings) {
   return [
     'Request:',
-    `${String(request.method || 'GET').toUpperCase()} ${request.url}`,
+    `${String(request.method || 'GET').toUpperCase()} ${redactText(request.url)}`,
     '',
     'Findings:',
     formatFindings(findings),

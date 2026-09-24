@@ -284,6 +284,11 @@ MIT
 
 ## Changelog
 
+### 1.1.3
+
+- Warning/block alerts now redact secrets in the displayed request URL.
+
+
 ### 1.1.2
 
 - Makes production-host detection boundary-aware to avoid `product`/`livereload` false positives.

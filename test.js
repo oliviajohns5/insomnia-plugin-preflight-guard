@@ -158,6 +158,12 @@ async function run() {
   assert(formatted.includes('Location: header.Authorization'), 'formatted finding has location line');
   const alertMessage = t.formatAlertMessage({ method: 'GET', url: 'https://httpbin.org/get' }, [{ severity: 'medium', rule: 'Sensitive header present', location: 'header.Authorization', preview: 'Authorization: Bear…alue' }]);
   assert(alertMessage.startsWith('Request:\nGET https://httpbin.org/get\n\nFindings:'), 'alert separates request and findings');
+  const secretUrlAlert = t.formatAlertMessage(
+    { method: 'GET', url: 'https://api.example.com/users?api_key=' + fakeOpenAiKey },
+    t.analyzeRequest({ method: 'GET', url: 'https://api.example.com/users?api_key=' + fakeOpenAiKey, headers: [], bodyText: '' })
+  );
+  assert(!secretUrlAlert.includes(fakeOpenAiKey), 'alert request URL redacts query-string secrets');
+  assert(secretUrlAlert.includes('api_key=') && (secretUrlAlert.includes('…') || secretUrlAlert.includes('***')), 'alert keeps useful redacted URL context');
 
   // fallback path must not use read-only filesystem root when save dialog is unavailable
   const fallbackPath = await t.getWritableAuditPath({ app: { getPath: async key => key === 'documents' ? '/tmp/preflight-docs' : '' } }, 'audit.md');

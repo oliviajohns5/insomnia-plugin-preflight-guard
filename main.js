@@ -298,7 +298,7 @@ async function guardRequest(context) {
   const request = collectRequest(context);
   const findings = analyzeRequest(request, cfg);
   const level = riskLevel(findings);
-  if (level === 'low') return;
+  if (level === 'low' || (level === 'medium' && cfg.warnOnMediumRisk === false)) return;
 
   const title = level === 'high' ? 'Preflight Guard blocked a risky request' : 'Preflight Guard warning';
   const message = formatAlertMessage(request, findings);
@@ -307,7 +307,7 @@ async function guardRequest(context) {
     await context.app.alert(title, message);
   }
 
-  if (level === 'high' && cfg.blockOnHighRisk) {
+  if (level === 'high' && cfg.blockOnHighRisk !== false) {
     throw new Error(formatErrorMessage(findings));
   }
 }

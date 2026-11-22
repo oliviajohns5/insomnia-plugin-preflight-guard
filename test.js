@@ -101,15 +101,62 @@ async function run() {
   await assert.rejects(() => t.guardRequest(blocked), /Preflight Guard blocked request/);
   assert.strictEqual(blocked.alerts.length, 1, 'blocked request should alert');
 
+  // malformed high-risk blocking settings must not allow a dangerous request through
+  for (const value of [null, 0, '']) {
+    const malformed = mockContext({
+      method: 'DELETE',
+      url: 'https://prod.example.com/users/1',
+      storeConfig: { blockOnHighRisk: value },
+    });
+    await assert.rejects(() => t.guardRequest(malformed), /Preflight Guard blocked request/,
+      `high-risk request should block for malformed blockOnHighRisk ${JSON.stringify(value)}`);
+    assert.strictEqual(malformed.alerts.length, 1, 'blocked high-risk request should still alert');
+  }
+
   // request hook warns but does not block medium risk
   const medium = mockContext({ headers: [{ name: 'Authorization', value: 'Bearer short-medium-token' }] });
   await t.guardRequest(medium);
   assert.strictEqual(medium.alerts.length, 1, 'medium request should alert');
 
-  // config can disable high-risk block
-  const warnOnly = mockContext({ method: 'DELETE', url: 'https://prod.example.com/users/1', storeConfig: { blockOnHighRisk: false } });
+  // disabling medium warnings suppresses medium-only request hook alerts
+  const mediumMuted = mockContext({
+    headers: [{ name: 'Authorization', value: 'Bearer short-medium-token' }],
+    storeConfig: { warnOnMediumRisk: false },
+  });
+  await t.guardRequest(mediumMuted);
+  assert.strictEqual(mediumMuted.alerts.length, 0, 'medium-only request should not alert when medium warnings are disabled');
+
+  // malformed settings must not silently suppress medium alerts
+  for (const value of [null, 0, '']) {
+    const malformed = mockContext({
+      headers: [{ name: 'Authorization', value: 'Bearer short-medium-token' }],
+      storeConfig: { warnOnMediumRisk: value },
+    });
+    await t.guardRequest(malformed);
+    assert.strictEqual(malformed.alerts.length, 1, `medium request should alert for malformed warnOnMediumRisk ${JSON.stringify(value)}`);
+  }
+
+  // high-risk requests still alert and block with medium warnings disabled
+  const highWithMediumMuted = mockContext({
+    method: 'DELETE',
+    url: 'https://prod.example.com/users/1',
+    headers: [{ name: 'Authorization', value: 'Bearer short-medium-token' }],
+    storeConfig: { warnOnMediumRisk: false },
+  });
+  await assert.rejects(() => t.guardRequest(highWithMediumMuted), /Preflight Guard blocked request/);
+  assert.strictEqual(highWithMediumMuted.alerts.length, 1, 'high-risk request should still alert when medium warnings are disabled');
+  assert(highWithMediumMuted.alerts[0].message.includes('[HIGH]'), 'high-risk finding remains in alert');
+
+  // high risk remains alert-only when blocking and medium warnings are both disabled
+  const warnOnly = mockContext({
+    method: 'DELETE',
+    url: 'https://prod.example.com/users/1',
+    headers: [{ name: 'Authorization', value: 'Bearer short-medium-token' }],
+    storeConfig: { blockOnHighRisk: false, warnOnMediumRisk: false },
+  });
   await t.guardRequest(warnOnly);
   assert.strictEqual(warnOnly.alerts.length, 1, 'warn-only high request should alert');
+  assert(warnOnly.alerts[0].message.includes('[HIGH]'), 'warn-only alert includes the high-risk finding');
 
   // local settings file can allowlist a production-like host
   const cfgDir = fs.mkdtempSync(path.join(os.tmpdir(), 'preflight-config-'));
